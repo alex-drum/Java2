@@ -1,4 +1,4 @@
-package lesson7;
+package lesson8;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -11,6 +11,8 @@ public class ClientHandler {
     private DataInputStream in;
     private DataOutputStream out;
     private String name;
+
+
 
     public String getName() {
         return name;
@@ -47,7 +49,7 @@ public class ClientHandler {
             ex.printStackTrace();
         }
         myServer.unsubscribe(this);
-        myServer.broadcast("User " + name + "left");
+        myServer.broadcast("User " + name + " left", true);
     }
 
     private void readMessages() throws IOException {
@@ -55,16 +57,25 @@ public class ClientHandler {
             if (in.available()>0) {
                 String message = in.readUTF();
                 System.out.println("From " + name + ":" + message);
-                if (message.equals("/end")) {
+                if (message.equalsIgnoreCase("/end")) {
+                    closeConnection();
                     return;
                 }
-                myServer.broadcast(name + ": " + message);
+                if (message.startsWith("/timeOut")) {
+                    System.out.println("TO");
+                    closeConnection();
+                }
+                if (message.startsWith("/w ")) {
+                    String[] parts = message.split("\\s");
+                    String realMessage = message.substring(message.indexOf(" ", message.indexOf(" ") + 1));
+                    myServer.sendDirect(parts[1],name+ ": "+ realMessage);
+                } else myServer.broadcast(name + ": " + message, true);
             }
         }
     }
 
     private void authenticate() throws IOException {
-        while(true) {
+
             if (in.available()>0){
                 String str = in.readUTF();
                 if (str.startsWith("/auth")) {
@@ -75,7 +86,7 @@ public class ClientHandler {
                             System.out.println(nick + " logged into chat");
                             name = nick;
                             sendMsg("/authOk " + nick);
-                            myServer.broadcast(nick + " is in chat");
+                            myServer.broadcast(nick + " is in chat", true);
                             myServer.subscribe(this);
                             return;
                         } else {
@@ -88,8 +99,6 @@ public class ClientHandler {
                     }
                 }
             }
-
-        }
     }
 
     public void sendMsg(String s) {
